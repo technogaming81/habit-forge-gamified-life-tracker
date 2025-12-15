@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Gem, Coins, Shield } from 'lucide-react';
 import { useUserStats } from '@/lib/store';
 import { calculateLevelData } from '@/lib/utils';

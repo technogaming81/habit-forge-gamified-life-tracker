@@ -2,8 +2,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Heatmap } from '@/components/analytics/Heatmap';
 import { HabitStats } from '@/components/analytics/HabitStats';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lightbulb } from 'lucide-react';
+import { InsightsCards } from '@/components/dashboard/InsightsCards';
 export function Analytics() {
   return (
     <DashboardLayout>
@@ -23,20 +22,7 @@ export function Analytics() {
               <HabitStats />
             </TabsContent>
             <TabsContent value="insights">
-              <Card className="rounded-2xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Lightbulb className="h-5 w-5 text-amber-500" />
-                    Personalized Insights
-                  </CardTitle>
-                  <CardDescription>Patterns we've found in your data.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm">✨ Your mood is 20% higher on days you complete a 'Fitness' habit.</p>
-                  <p className="text-sm">🚀 You are most consistent with 'Learning' habits on weekdays.</p>
-                  <p className="text-sm">💡 Consider adding a 'Mindfulness' habit to complement your routine.</p>
-                </CardContent>
-              </Card>
+              <InsightsCards />
             </TabsContent>
           </Tabs>
         </div>

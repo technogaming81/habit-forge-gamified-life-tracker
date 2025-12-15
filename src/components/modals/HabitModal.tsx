@@ -13,15 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useHabitActions, Habit } from '@/lib/store';
+import { useHabitActions, Habit, HabitFrequency, HabitType } from '@/lib/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
-import { format, addYears, startOfDay } from 'date-fns';
 const habitSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
@@ -31,8 +26,6 @@ const habitSchema = z.object({
   days: z.array(z.number()).optional(),
   target: z.number().min(1, 'Target must be at least 1'),
   unit: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
 });
 type HabitFormData = z.infer<typeof habitSchema>;
 interface HabitModalProps {
@@ -46,19 +39,25 @@ export function HabitModal({ isOpen, onClose, habit }: HabitModalProps) {
   const isEdit = !!habit;
   const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<HabitFormData>({
     resolver: zodResolver(habitSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      category: 'Health',
+      type: 'positive',
+      frequency: 'daily',
+      days: [],
+      target: 1,
+      unit: '',
+    },
   });
   useEffect(() => {
-    if (isOpen) {
-      if (habit) {
-        reset(habit);
-      } else {
-        reset({
-          name: '', description: '', category: 'Health', type: 'positive',
-          frequency: 'daily', days: [], target: 1, unit: '',
-          startDate: startOfDay(new Date()).toISOString(),
-          endDate: startOfDay(addYears(new Date(), 1)).toISOString(),
-        });
-      }
+    if (habit) {
+      reset(habit);
+    } else {
+      reset({
+        name: '', description: '', category: 'Health', type: 'positive',
+        frequency: 'daily', days: [], target: 1, unit: '',
+      });
     }
   }, [habit, isOpen, reset]);
   const frequency = watch('frequency');
@@ -79,7 +78,7 @@ export function HabitModal({ isOpen, onClose, habit }: HabitModalProps) {
             {isEdit ? 'Update the details of your habit.' : 'Forge a new habit to improve your life.'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" {...register('name')} placeholder="e.g. Morning Run" />
@@ -159,64 +158,6 @@ export function HabitModal({ isOpen, onClose, habit }: HabitModalProps) {
           )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Start Date</Label>
-              <Controller
-                name="startDate"
-                control={control}
-                render={({ field }) => (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={field.value ? new Date(field.value) : undefined}
-                        onSelect={(date) => field.onChange(date?.toISOString())}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                )}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>End Date</Label>
-              <Controller
-                name="endDate"
-                control={control}
-                render={({ field }) => (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={field.value ? new Date(field.value) : undefined}
-                        onSelect={(date) => field.onChange(date?.toISOString())}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                )}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
               <Label htmlFor="target">Target</Label>
               <Input id="target" type="number" {...register('target', { valueAsNumber: true })} />
               {errors.target && <p className="text-sm text-red-500">{errors.target.message}</p>}
@@ -226,7 +167,7 @@ export function HabitModal({ isOpen, onClose, habit }: HabitModalProps) {
               <Input id="unit" {...register('unit')} placeholder="e.g., pages, minutes" />
             </div>
           </div>
-          <DialogFooter className="pt-4">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit">{isEdit ? 'Save Changes' : 'Create Habit'}</Button>
           </DialogFooter>

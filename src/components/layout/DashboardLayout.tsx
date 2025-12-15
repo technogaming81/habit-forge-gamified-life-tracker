@@ -1,11 +1,11 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Home, BarChart2, ShoppingCart, Settings, Gem, Menu, User } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Home, BarChart2, ShoppingCart, Settings, Gem, Menu, User, LogOut } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useHabitStore } from '@/lib/store';
+import { useHabitStore, useUserStats } from '@/lib/store';
 import { calculateLevelData } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 const navItems = [
@@ -29,7 +29,14 @@ const NavItem = ({ item }: { item: typeof navItems[0] }) => (
   </NavLink>
 );
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const level = useHabitStore(s => calculateLevelData(s.userStats.xp).level);
+  const navigate = useNavigate();
+  const { xp } = useUserStats();
+  const { level } = calculateLevelData(xp);
+  const logout = useHabitStore(s => s.actions.logout);
+  const handleLogout = () => {
+    logout();
+    navigate('/auth');
+  };
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
@@ -79,7 +86,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuItem asChild><NavLink to="/settings">Settings</NavLink></DropdownMenuItem>
               <DropdownMenuItem asChild><NavLink to="/shop">Shop</NavLink></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>

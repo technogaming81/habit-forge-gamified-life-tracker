@@ -2,41 +2,45 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useHeatmapData } from '@/lib/store';
-import { format, parseISO } from 'date-fns';
-const getColor = (count: number) => {
-  if (count === 0) return 'bg-muted/50';
-  if (count <= 1) return 'bg-green-200 dark:bg-green-900';
-  if (count <= 2) return 'bg-green-400 dark:bg-green-700';
-  if (count <= 3) return 'bg-green-600 dark:bg-green-500';
-  return 'bg-green-800 dark:bg-green-300';
+import { format, parseISO, getDay, startOfWeek, addDays } from 'date-fns';
+const getColor = (level: number) => {
+  switch (level) {
+    case 0: return 'bg-muted/50';
+    case 1: return 'bg-green-200 dark:bg-green-900';
+    case 2: return 'bg-green-400 dark:bg-green-700';
+    case 3: return 'bg-green-600 dark:bg-green-500';
+    case 4: return 'bg-green-800 dark:bg-green-300';
+    default: return 'bg-muted/50';
+  }
 };
 export function Heatmap() {
   const data = useHeatmapData();
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date();
-    d.setMonth(i);
-    return d.toLocaleString('default', { month: 'short' });
-  });
-  // Get the first day of the data to align the grid
-  const firstDay = data.length > 0 ? parseISO(data[0].date).getDay() : 0;
+  if (!data || data.length === 0) {
+    return (
+      <Card className="rounded-2xl shadow-sm">
+        <CardHeader><CardTitle>Contribution Heatmap</CardTitle></CardHeader>
+        <CardContent><p>No data to display yet. Start tracking habits!</p></CardContent>
+      </Card>
+    );
+  }
+  const firstDate = parseISO(data[0].date);
+  const dayOffset = getDay(firstDate);
   return (
     <Card className="rounded-2xl shadow-sm">
       <CardHeader>
         <CardTitle>Contribution Heatmap</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center overflow-x-auto p-2">
           <div className="grid grid-rows-7 grid-flow-col gap-1">
-            {/* Empty cells for alignment */}
-            {Array.from({ length: firstDay }).map((_, index) => (
+            {Array.from({ length: dayOffset }).map((_, index) => (
               <div key={`empty-${index}`} className="w-3.5 h-3.5" />
             ))}
-            {data.map(({ date, count }) => (
+            {data.map(({ date, count, level }) => (
               <TooltipProvider key={date} delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className={`w-3.5 h-3.5 rounded-sm ${getColor(count)}`} />
+                    <div className={`w-3.5 h-3.5 rounded-sm ${getColor(level)}`} />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{count} completions on {format(parseISO(date), 'MMM d, yyyy')}</p>
