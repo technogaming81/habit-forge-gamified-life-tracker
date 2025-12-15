@@ -1,43 +1,10 @@
-import { useState } from 'react';
-import { Trophy, Smile, Badge, Star, Flame, Zap, Award, Coffee, Moon, CheckCircle } from 'lucide-react';
-import { useQuests, useBadges, useUserBadges, useHabitActions, useAllQuestsComplete } from '@/lib/store';
+import { Trophy, Smile, Badge } from 'lucide-react';
+import { useQuests } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { motion, AnimatePresence } from 'framer-motion';
-import confetti from 'canvas-confetti';
-// Resolve the appropriate icon component for a given badge ID.
-const getBadgeIcon = (badgeId: string): React.ComponentType<{ className?: string }> => {
-  switch (badgeId) {
-    case 'streak_7':
-    case 'streak_30':
-      return Flame;
-    case 'first_quest':
-      return Zap;
-    case 'perfect_week':
-      return Award;
-    case 'early_bird':
-      return Coffee;
-    case 'night_owl':
-      return Moon;
-    default:
-      return Badge;
-  }
-};
 export function GamificationSidebar() {
   const quests = useQuests();
-  const allBadges = useBadges();
-  const userBadges = useUserBadges();
-  const { logMood } = useHabitActions();
-  const allQuestsComplete = useAllQuestsComplete();
-  const [mood, setMood] = useState(0);
-  const handleMoodSelect = (rating: number) => {
-    setMood(rating);
-    logMood(rating);
-    confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 }, angle: 270 });
-  };
-  const recentUserBadges = allBadges.filter(b => userBadges.includes(b.id)).slice(-5);
   return (
     <div className="space-y-6">
       <Card className="rounded-2xl shadow-sm">
@@ -48,30 +15,22 @@ export function GamificationSidebar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {quests.length === 0 || allQuestsComplete ? (
-            <div className="p-4 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-xl text-center">
-              <CheckCircle className="h-10 w-10 mx-auto text-green-500 mb-2" />
-              <h3 className="font-bold">All Quests Complete!</h3>
-              <p className="text-sm text-muted-foreground">New challenges will appear tomorrow, or when you complete more habits.</p>
-            </div>
-          ) : (
-            quests.map((quest) => (
-              <div key={quest.id}>
-                <div className="flex justify-between items-center mb-1">
-                  <label
-                    htmlFor={`quest-${quest.id}`}
-                    className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", quest.completed && "line-through text-muted-foreground")}
-                  >
-                    {quest.title}
-                  </label>
-                  <span className="text-xs text-muted-foreground">
-                    {quest.reward.xp} XP / {quest.reward.coins} Coins
-                  </span>
-                </div>
-                <Progress value={(quest.current / quest.target) * 100} className="h-2" />
+          {quests.map((quest) => (
+            <div key={quest.id}>
+              <div className="flex justify-between items-center mb-1">
+                <label
+                  htmlFor={`quest-${quest.id}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {quest.title}
+                </label>
+                <span className="text-xs text-muted-foreground">
+                  {quest.reward.xp} XP / {quest.reward.coins} Coins
+                </span>
               </div>
-            ))
-          )}
+              <Progress value={(quest.current / quest.target) * 100} className="h-2" />
+            </div>
+          ))}
         </CardContent>
       </Card>
       <Card className="rounded-2xl shadow-sm">
@@ -84,17 +43,10 @@ export function GamificationSidebar() {
         <CardContent>
           <p className="text-sm text-muted-foreground">How are you feeling today?</p>
           <div className="flex justify-around mt-4">
-            {[1, 2, 3, 4, 5].map((rating) => (
-              <motion.button
-                key={rating}
-                whileHover={{ scale: 1.2, rotate: 5 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleMoodSelect(rating)}
-                className="text-3xl hover:scale-125 transition-transform duration-200"
-                aria-label={`Rate mood as ${rating} out of 5`}
-              >
-                <Star className={cn("h-8 w-8 transition-colors", rating <= mood ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground/50")} />
-              </motion.button>
+            {['😞', '😐', '🙂', '😄', '🤩'].map((emoji, i) => (
+              <button key={i} className="text-3xl hover:scale-125 transition-transform duration-200">
+                {emoji}
+              </button>
             ))}
           </div>
         </CardContent>
@@ -107,39 +59,7 @@ export function GamificationSidebar() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {recentUserBadges.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              <AnimatePresence>
-                {recentUserBadges.map((badge, i) => {
-                  const Icon = getBadgeIcon(badge.id);
-                  return (
-                    <motion.div
-                      key={badge.id}
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.1 }}
-                    >
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <div className="bg-muted p-3 rounded-full">
-                              <Icon className="h-6 w-6 text-purple-500" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="font-bold">{badge.name}</p>
-                            <p>{badge.description}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Complete habits to unlock badges!</p>
-          )}
+          <p className="text-sm text-muted-foreground">No new badges earned yet.</p>
         </CardContent>
       </Card>
     </div>
