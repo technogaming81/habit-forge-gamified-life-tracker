@@ -14,6 +14,8 @@ import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import '@/index.css'
 import { LandingPage } from '@/pages/LandingPage';
 import { Dashboard } from '@/pages/Dashboard';
+import { Analytics } from '@/pages/Analytics';
+import { Shop } from '@/pages/Shop';
 const queryClient = new QueryClient();
 // For this demo, we'll assume the user is always "authenticated"
 const isAuthenticated = true;
@@ -33,20 +35,19 @@ const router = createBrowserRouter([
     element: <Dashboard />,
     errorElement: <RouteErrorBoundary />,
   },
-  // Add placeholder routes for other nav items to prevent 404s
   {
     path: "/analytics",
-    element: <Dashboard />, // Or a placeholder page
+    element: <Analytics />,
     errorElement: <RouteErrorBoundary />,
   },
   {
     path: "/shop",
-    element: <Dashboard />, // Or a placeholder page
+    element: <Shop />,
     errorElement: <RouteErrorBoundary />,
   },
   {
     path: "/settings",
-    element: <Dashboard />, // Or a placeholder page
+    element: <Dashboard />, // Placeholder, can be built in a future phase
     errorElement: <RouteErrorBoundary />,
   },
 ]);

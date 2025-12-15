@@ -1,12 +1,13 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Home, BarChart2, ShoppingCart, Settings, Gem, Menu, User } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useUserStats } from '@/lib/store';
+import { useHabitStore } from '@/lib/store';
 import { calculateLevelData } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Analytics', href: '/analytics', icon: BarChart2 },
@@ -28,8 +29,7 @@ const NavItem = ({ item }: { item: typeof navItems[0] }) => (
   </NavLink>
 );
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const userStats = useUserStats();
-  const { level } = calculateLevelData(userStats.xp);
+  const level = useHabitStore(s => calculateLevelData(s.userStats.xp).level);
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
@@ -76,8 +76,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account (Level {level})</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuItem asChild><NavLink to="/settings">Settings</NavLink></DropdownMenuItem>
+              <DropdownMenuItem asChild><NavLink to="/shop">Shop</NavLink></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Logout</DropdownMenuItem>
             </DropdownMenuContent>
