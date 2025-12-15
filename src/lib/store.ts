@@ -37,6 +37,8 @@ export interface Quest {
   current: number;
   completed: boolean;
   reward: { xp: number; coins: number };
+  type: 'habit_completion' | 'streak' | 'mood' | 'category' | 'xp';
+  category?: string;
 }
 export interface Check {
   habitId: string;
@@ -98,6 +100,7 @@ interface HabitState {
     dailyReset: () => void;
     updateUser: (name: string) => void;
     completeOnboarding: () => void;
+    freshStart: () => void;
   };
 }
 const ALL_BADGES: Badge[] = [
@@ -112,15 +115,39 @@ const MOCK_SHOP_ITEMS: ShopItem[] = [
     { id: 'streak_freeze', name: 'Streak Freeze', description: 'Protect a streak for one day of inactivity.', cost: 150 },
     { id: 'avatar_theme_1', name: 'Cosmic Theme', description: 'A new look for your profile.', cost: 300 },
 ];
-const generateQuests = (): Quest[] => {
-  const questTemplates = [
-    { id: 'q1', title: 'Complete 3 habits', target: 3, reward: { xp: 50, coins: 10 } },
-    { id: 'q2', title: 'Achieve a 3-day streak', target: 1, reward: { xp: 75, coins: 15 } },
-    { id: 'q3', title: 'Log your mood', target: 1, reward: { xp: 20, coins: 5 } },
-    { id: 'q4', title: 'Complete a Fitness habit', target: 1, reward: { xp: 30, coins: 5 } },
-  ];
-  // Simple shuffle and pick 3
-  return questTemplates.sort(() => 0.5 - Math.random()).slice(0, 3).map(q => ({...q, current: 0, completed: false}));
+const questTemplates = [
+    { title: 'Complete 3 habits', target: 3, reward: { xp: 50, coins: 10 }, type: 'habit_completion' },
+    { title: 'Complete 5 habits', target: 5, reward: { xp: 100, coins: 20 }, type: 'habit_completion' },
+    { title: 'Achieve a 3-day streak', target: 3, reward: { xp: 75, coins: 15 }, type: 'streak' },
+    { title: 'Achieve a 7-day streak', target: 7, reward: { xp: 150, coins: 30 }, type: 'streak' },
+    { title: 'Log your mood', target: 1, reward: { xp: 20, coins: 5 }, type: 'mood' },
+    { title: 'Log your mood 3 times', target: 3, reward: { xp: 60, coins: 15 }, type: 'mood' },
+    { title: 'Earn 100 XP', target: 100, reward: { xp: 25, coins: 5 }, type: 'xp' },
+    { title: 'Earn 250 XP', target: 250, reward: { xp: 50, coins: 10 }, type: 'xp' },
+    { title: 'Complete a ${category} habit', target: 1, reward: { xp: 30, coins: 5 }, type: 'category' },
+    { title: 'Complete 2 ${category} habits', target: 2, reward: { xp: 60, coins: 10 }, type: 'category' },
+    { title: 'Check in to every habit once', target: -1, reward: { xp: 100, coins: 25 }, type: 'habit_completion' }, // -1 target means all habits
+    { title: 'Maintain a perfect day', target: -1, reward: { xp: 120, coins: 30 }, type: 'habit_completion' },
+];
+const generateQuests = (habits: Habit[]): Quest[] => {
+    const userCategories = [...new Set(habits.map(h => h.category).filter(Boolean))];
+    const availableTemplates = questTemplates.map(q => {
+        if (q.type === 'category') {
+            if (userCategories.length > 0) {
+                const category = userCategories[Math.floor(Math.random() * userCategories.length)];
+                return { ...q, title: q.title.replace('${category}', category), category };
+            }
+            return null; // Can't generate this quest if no categories
+        }
+        if (q.target === -1) {
+            return { ...q, target: habits.filter(h => !h.archived).length };
+        }
+        return q;
+    }).filter(Boolean) as (Omit<Quest, 'id' | 'current' | 'completed'>)[];
+    return availableTemplates
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3)
+        .map((q, i) => ({ ...q, id: `${Date.now()}-${i}`, current: 0, completed: false }));
 };
 const checkAndAwardBadges = (state: HabitState) => {
     const newBadges: string[] = [];
@@ -149,18 +176,20 @@ const checkAndAwardBadges = (state: HabitState) => {
         toast.success(`Badge${badgeNames.length > 1 ? 's' : ''} Unlocked: ${badgeNames.join(', ')}!`);
     }
 };
-const updateQuests = (state: HabitState, type: 'habit' | 'mood' | 'streak', habit?: Habit) => {
+const updateQuests = (state: HabitState, habit?: Habit, xpGained: number = 0) => {
     let questCompleted = false;
+    const maxStreak = Math.max(0, ...state.habits.map(h => h.streak));
     state.quests.forEach(q => {
         if (q.completed) return;
-        if (type === 'habit' && q.title.includes('habits')) q.current++;
-        if (type === 'habit' && habit && q.title.toLowerCase().includes(habit.category.toLowerCase())) q.current++;
-        if (type === 'mood' && q.title.includes('mood')) q.current++;
-        if (type === 'streak' && q.title.includes('streak')) {
-            const maxStreak = Math.max(...state.habits.map(h => h.streak));
-            if (maxStreak >= 3) q.current = 1;
+        let progress = false;
+        switch (q.type) {
+            case 'habit_completion': if (habit) { q.current++; progress = true; } break;
+            case 'category': if (habit && habit.category === q.category) { q.current++; progress = true; } break;
+            case 'mood': if (!habit) { q.current++; progress = true; } break;
+            case 'streak': q.current = Math.min(q.target, maxStreak); if (q.current > 0) progress = true; break;
+            case 'xp': q.current += xpGained; if (xpGained > 0) progress = true; break;
         }
-        if (q.current >= q.target) {
+        if (progress && q.current >= q.target) {
             q.completed = true;
             state.userStats.xp += q.reward.xp;
             state.userStats.coins += q.reward.coins;
@@ -170,7 +199,14 @@ const updateQuests = (state: HabitState, type: 'habit' | 'mood' | 'streak', habi
             questCompleted = true;
         }
     });
-    if (questCompleted) checkAndAwardBadges(state);
+    if (questCompleted) {
+        checkAndAwardBadges(state);
+        // Endless quests: if all are complete, generate a new set
+        if (state.quests.every(q => q.completed)) {
+            state.quests = generateQuests(state.habits);
+            toast.success("New quests unlocked!");
+        }
+    }
 };
 // Zustand Store with Persistence
 export const useHabitStore = create<HabitState>()(
@@ -196,7 +232,7 @@ export const useHabitStore = create<HabitState>()(
               if (isNewUser) {
                 state.firstLogin = true;
                 state.userStats = { xp: 0, coins: 0, streakFreezes: 0 };
-                state.quests = generateQuests();
+                state.quests = generateQuests(state.habits);
                 state.habits = [];
                 state.checks = {};
                 state.moodLogs = [];
@@ -238,12 +274,14 @@ export const useHabitStore = create<HabitState>()(
           check.value += 1;
           state.checks[checkKey] = check;
           const justCompleted = check.value >= habit.target;
+          let xpGained = 0;
           if (habit.type === 'positive') {
-            const xpGained = 10 + Math.min(habit.streak, 10);
+            xpGained = 10 + Math.min(habit.streak, 10);
             const coinsGained = 5;
             state.userStats.xp += xpGained;
             state.userStats.coins += coinsGained;
           }
+          updateQuests(state, undefined, xpGained);
           if (justCompleted) {
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             const lastCheckedDate = habit.lastChecked ? parseISO(habit.lastChecked) : null;
@@ -259,8 +297,7 @@ export const useHabitStore = create<HabitState>()(
               }
             }
             habit.lastChecked = dateStr;
-            updateQuests(state, 'habit', habit);
-            updateQuests(state, 'streak');
+            updateQuests(state, habit);
             checkAndAwardBadges(state);
           }
         })),
@@ -303,7 +340,7 @@ export const useHabitStore = create<HabitState>()(
             } else {
                 state.moodLogs.push({ date: dateStr, rating });
             }
-            updateQuests(state, 'mood');
+            updateQuests(state);
         })),
         purchaseItem: (itemId) => {
             const { userStats, shopItems } = get();
@@ -325,7 +362,7 @@ export const useHabitStore = create<HabitState>()(
             if (get().lastVisitDate !== todayStr) {
                 set(produce((state: HabitState) => {
                     state.lastVisitDate = todayStr;
-                    state.quests = generateQuests();
+                    state.quests = generateQuests(state.habits);
                     toast.info("Your daily quests have been refreshed!");
                 }));
             }
@@ -336,6 +373,19 @@ export const useHabitStore = create<HabitState>()(
             }
         })),
         completeOnboarding: () => set({ firstLogin: false }),
+        freshStart: () => {
+            set(produce((state: HabitState) => {
+                state.habits = [];
+                state.checks = {};
+                state.moodLogs = [];
+                state.userBadges = [];
+                state.quests = [];
+                state.userStats = { xp: 0, coins: 0, streakFreezes: 0 };
+                state.firstLogin = true;
+            }));
+            localStorage.removeItem('habit-forge-storage');
+            toast.success("Fresh start activated! Welcome back to Day One. 🎉");
+        },
       },
     }),
     {
@@ -360,6 +410,7 @@ export const useUserBadges = () => useHabitStore(s => s.userBadges);
 export const useShopItems = () => useHabitStore(s => s.shopItems);
 export const useHabitActions = () => useHabitStore(s => s.actions);
 export const useIsFirstLogin = () => useHabitStore(s => s.firstLogin);
+export const useAllQuestsComplete = () => useHabitStore(s => s.quests.length > 0 && s.quests.every(q => q.completed));
 // Derived Data Selectors
 export const useHeatmapData = (): HeatmapData[] => {
   const checks = useChecks();

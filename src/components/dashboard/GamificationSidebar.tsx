@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { Trophy, Smile, Badge, Star, Flame, Zap, Award, Coffee, Moon } from 'lucide-react';
-import { useQuests, useBadges, useUserBadges, useHabitActions } from '@/lib/store';
+import { Trophy, Smile, Badge, Star, Flame, Zap, Award, Coffee, Moon, CheckCircle } from 'lucide-react';
+import { useQuests, useBadges, useUserBadges, useHabitActions, useAllQuestsComplete } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-
 // Resolve the appropriate icon component for a given badge ID.
 const getBadgeIcon = (badgeId: string): React.ComponentType<{ className?: string }> => {
   switch (badgeId) {
@@ -31,6 +30,7 @@ export function GamificationSidebar() {
   const allBadges = useBadges();
   const userBadges = useUserBadges();
   const { logMood } = useHabitActions();
+  const allQuestsComplete = useAllQuestsComplete();
   const [mood, setMood] = useState(0);
   const handleMoodSelect = (rating: number) => {
     setMood(rating);
@@ -48,22 +48,30 @@ export function GamificationSidebar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {quests.map((quest) => (
-            <div key={quest.id}>
-              <div className="flex justify-between items-center mb-1">
-                <label
-                  htmlFor={`quest-${quest.id}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {quest.title}
-                </label>
-                <span className="text-xs text-muted-foreground">
-                  {quest.reward.xp} XP / {quest.reward.coins} Coins
-                </span>
-              </div>
-              <Progress value={(quest.current / quest.target) * 100} className="h-2" />
+          {quests.length === 0 || allQuestsComplete ? (
+            <div className="p-4 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-xl text-center">
+              <CheckCircle className="h-10 w-10 mx-auto text-green-500 mb-2" />
+              <h3 className="font-bold">All Quests Complete!</h3>
+              <p className="text-sm text-muted-foreground">New challenges will appear tomorrow, or when you complete more habits.</p>
             </div>
-          ))}
+          ) : (
+            quests.map((quest) => (
+              <div key={quest.id}>
+                <div className="flex justify-between items-center mb-1">
+                  <label
+                    htmlFor={`quest-${quest.id}`}
+                    className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", quest.completed && "line-through text-muted-foreground")}
+                  >
+                    {quest.title}
+                  </label>
+                  <span className="text-xs text-muted-foreground">
+                    {quest.reward.xp} XP / {quest.reward.coins} Coins
+                  </span>
+                </div>
+                <Progress value={(quest.current / quest.target) * 100} className="h-2" />
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
       <Card className="rounded-2xl shadow-sm">

@@ -6,15 +6,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useHabitStore } from '@/lib/store';
 import { downloadJSON, downloadCSV } from '@/lib/utils';
-import { User, LogOut, Download, Palette } from 'lucide-react';
+import { User, LogOut, Download, Palette, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 export function Settings() {
   const navigate = useNavigate();
   const state = useHabitStore.getState();
   const user = state.auth?.user ?? { name: 'Demo User', email: 'demo@habitforge.com' };
-  const { logout, updateUser } = state.actions;
+  const { logout, updateUser, freshStart } = state.actions;
   const [name, setName] = useState(user.name);
   const handleLogout = () => {
     logout();
@@ -35,6 +46,10 @@ export function Settings() {
   const handleProfileUpdate = () => {
     updateUser(name);
     toast.success("Profile updated successfully!");
+  };
+  const handleFreshStart = () => {
+    freshStart();
+    navigate('/dashboard');
   };
   return (
     <DashboardLayout>
@@ -84,13 +99,40 @@ export function Settings() {
               </Button>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl shadow-sm border-red-500/50">
+          <Card className="rounded-2xl shadow-sm border-destructive/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-500"><LogOut /> Logout</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-destructive"><RefreshCw /> Fresh Start</CardTitle>
+              <CardDescription>Reset all progress and start over. This action is irreversible.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="w-full">Reset Everything</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all your habits, check-ins, stats, and badges. Your account will be reset to day one, and you will see the onboarding tour again. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleFreshStart} className="bg-destructive hover:bg-destructive/90">
+                      Yes, Reset Everything
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><LogOut /> Logout</CardTitle>
               <CardDescription>Sign out of your account.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="destructive" onClick={handleLogout} className="w-full">
+              <Button variant="outline" onClick={handleLogout} className="w-full">
                 Logout
               </Button>
             </CardContent>
