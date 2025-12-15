@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 export function GamificationSidebar() {
   const quests = useQuests();
   const allBadges = useBadges();
@@ -15,8 +16,9 @@ export function GamificationSidebar() {
   const handleMoodSelect = (rating: number) => {
     setMood(rating);
     logMood(rating);
+    confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 }, angle: 270 });
   };
-  const recentUserBadges = allBadges.filter(b => userBadges.includes(b.id)).slice(-3);
+  const recentUserBadges = allBadges.filter(b => userBadges.includes(b.id)).slice(-5);
   return (
     <div className="space-y-6">
       <Card className="rounded-2xl shadow-sm">
@@ -58,10 +60,11 @@ export function GamificationSidebar() {
             {[1, 2, 3, 4, 5].map((rating) => (
               <motion.button
                 key={rating}
-                whileHover={{ scale: 1.2 }}
+                whileHover={{ scale: 1.2, rotate: 5 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleMoodSelect(rating)}
                 className="text-3xl hover:scale-125 transition-transform duration-200"
+                aria-label={`Rate mood as ${rating} out of 5`}
               >
                 <Star className={cn("h-8 w-8 transition-colors", rating <= mood ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground/50")} />
               </motion.button>
@@ -79,24 +82,33 @@ export function GamificationSidebar() {
         <CardContent>
           {recentUserBadges.length > 0 ? (
             <div className="flex space-x-4">
-              {recentUserBadges.map(badge => (
-                <TooltipProvider key={badge.id}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <div className="bg-muted p-3 rounded-full">
-                        <badge.icon className="h-6 w-6 text-purple-500" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-bold">{badge.name}</p>
-                      <p>{badge.description}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
+              <AnimatePresence>
+                {recentUserBadges.map((badge, i) => (
+                  <motion.div
+                    key={badge.id}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="bg-muted p-3 rounded-full">
+                            <badge.icon className="h-6 w-6 text-purple-500" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-bold">{badge.name}</p>
+                          <p>{badge.description}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No new badges earned yet.</p>
+            <p className="text-sm text-muted-foreground">Complete habits to unlock badges!</p>
           )}
         </CardContent>
       </Card>

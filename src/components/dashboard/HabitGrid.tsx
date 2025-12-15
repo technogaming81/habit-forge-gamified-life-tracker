@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Flame, PlusCircle, GripVertical } from 'lucide-react';
-import { useHabits, useChecks, useHabitActions, Habit } from '@/lib/store';
+import { useChecks, useHabitActions, Habit } from '@/lib/store';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -34,15 +34,24 @@ const SortableHabitCard = ({ habit }: { habit: Habit }) => {
   };
   return (
     <>
-      <div ref={setNodeRef} style={style}>
-        <Card className={cn("rounded-2xl transition-all duration-300 relative group", isCompleted ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800" : "bg-card")}>
-          <div {...attributes} {...listeners} className="absolute top-3 right-12 cursor-grab p-2 text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+      <motion.div
+        ref={setNodeRef}
+        style={style}
+        layout
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)" }}
+        className="min-h-[220px]"
+      >
+        <Card className={cn("rounded-2xl transition-all duration-300 relative group h-full flex flex-col", isCompleted ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800" : "bg-card")}>
+          <div {...attributes} {...listeners} className="absolute top-3 right-12 cursor-grab p-2 text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" aria-label={`Drag to reorder ${habit.name}`}>
             <GripVertical className="h-5 w-5" />
           </div>
           <div className="absolute top-1 right-1">
             <HabitActions habitId={habit.id} onEdit={() => setIsEditModalOpen(true)} />
           </div>
-          <CardHeader className="cursor-pointer" onClick={() => setIsEditModalOpen(true)}>
+          <CardHeader className="cursor-pointer flex-shrink-0" onClick={() => setIsEditModalOpen(true)}>
             <div className="flex justify-between items-start">
               <div>
                 <CardTitle className="text-lg pr-8">{habit.name}</CardTitle>
@@ -54,7 +63,7 @@ const SortableHabitCard = ({ habit }: { habit: Habit }) => {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-grow">
             {habit.target > 1 && (
               <>
                 <Progress value={progress} className="h-2 mb-2" />
@@ -62,34 +71,34 @@ const SortableHabitCard = ({ habit }: { habit: Habit }) => {
               </>
             )}
           </CardContent>
-          <CardFooter>
-            <Button onClick={handleCheck} disabled={isCompleted} className="w-full rounded-lg">
-              {isCompleted ? 'Completed!' : `Check-in (${currentValue}/${habit.target})`}
-            </Button>
+          <CardFooter className="flex-shrink-0">
+            <motion.div whileTap={{ scale: 0.95 }} className="w-full">
+              <Button onClick={handleCheck} disabled={isCompleted} className="w-full rounded-lg min-h-[44px]" aria-label={`Complete ${habit.name}`}>
+                {isCompleted ? 'Completed!' : `Check-in (${currentValue}/${habit.target})`}
+              </Button>
+            </motion.div>
           </CardFooter>
         </Card>
-      </div>
+      </motion.div>
       {isEditModalOpen && <HabitModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} habit={habit} />}
     </>
   );
 };
-export function HabitGrid({ openModal, showArchived }: { openModal: () => void, showArchived: boolean }) {
-  const allHabits = useHabits();
-  const habits = allHabits.filter(h => showArchived ? h.archived : !h.archived);
+export function HabitGrid({ habits, openModal, showArchived }: { habits: Habit[], openModal: () => void, showArchived: boolean }) {
   const { reorderHabits } = useHabitActions();
   const sensors = useSensors(useSensor(PointerSensor));
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-      const oldIndex = allHabits.findIndex((h) => h.id === active.id);
-      const newIndex = allHabits.findIndex((h) => h.id === over.id);
-      reorderHabits(arrayMove(allHabits, oldIndex, newIndex));
+      const oldIndex = habits.findIndex((h) => h.id === active.id);
+      const newIndex = habits.findIndex((h) => h.id === over.id);
+      reorderHabits(arrayMove(habits, oldIndex, newIndex));
     }
   };
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={habits.map(h => h.id)} strategy={verticalListSortingStrategy}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {habits.map((habit) => (
             <SortableHabitCard key={habit.id} habit={habit} />
           ))}

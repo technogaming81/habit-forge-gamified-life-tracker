@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { format, subDays, isYesterday, isToday, parseISO } from 'date-fns';
-import { Award, Flame, Zap } from 'lucide-react';
+import { format, subDays, isYesterday, isToday, parseISO, startOfDay, isSameDay } from 'date-fns';
+import { Award, Flame, Zap, Star, Coffee, Moon } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 import { computeInsights } from './utils';
 // Types
 export type HabitType = 'positive' | 'negative';
@@ -21,6 +22,7 @@ export interface Habit {
   streak: number;
   lastChecked: string | null; // YYYY-MM-DD
   archived: boolean;
+  order: number;
 }
 export interface UserStats {
   xp: number;
@@ -80,25 +82,28 @@ interface HabitState {
   badges: Badge[];
   userBadges: string[];
   shopItems: ShopItem[];
+  lastVisitDate: string | null;
   actions: {
     login: (email: string, pass: string) => boolean;
     logout: () => void;
     checkHabit: (habitId: string, date: Date) => void;
-    addHabit: (habit: Omit<Habit, 'id' | 'streak' | 'lastChecked' | 'archived'>) => void;
+    addHabit: (habit: Omit<Habit, 'id' | 'streak' | 'lastChecked' | 'archived' | 'order'>) => void;
     editHabit: (habit: Habit) => void;
     deleteHabit: (habitId: string) => void;
     archiveHabit: (habitId: string) => void;
     reorderHabits: (habits: Habit[]) => void;
     logMood: (rating: number) => void;
     purchaseItem: (itemId: string) => boolean;
+    dailyReset: () => void;
+    updateUser: (name: string) => void;
   };
 }
 // Mock Data for initial state
 const MOCK_HABITS: Habit[] = [
-  { id: '1', name: 'Read 10 pages', description: 'Read from a book for self-improvement.', category: 'Learning', type: 'positive', frequency: 'daily', target: 10, unit: 'pages', streak: 5, lastChecked: format(subDays(new Date(), 1), 'yyyy-MM-dd'), archived: false },
-  { id: '2', name: 'Morning Run', description: '30-minute run to start the day.', category: 'Fitness', type: 'positive', frequency: 'specific_days', days: [1, 3, 5], target: 1, unit: 'run', streak: 12, lastChecked: format(subDays(new Date(), 2), 'yyyy-MM-dd'), archived: false },
-  { id: '3', name: 'Drink 8 glasses of water', description: 'Stay hydrated throughout the day.', category: 'Health', type: 'positive', frequency: 'daily', target: 8, unit: 'glasses', streak: 2, lastChecked: format(subDays(new Date(), 1), 'yyyy-MM-dd'), archived: false },
-  { id: '4', name: 'No Junk Food', description: 'Avoid eating processed junk food.', category: 'Health', type: 'negative', frequency: 'daily', target: 1, unit: 'day', streak: 3, lastChecked: format(subDays(new Date(), 1), 'yyyy-MM-dd'), archived: false },
+  { id: '1', name: 'Read 10 pages', description: 'Read from a book for self-improvement.', category: 'Learning', type: 'positive', frequency: 'daily', target: 10, unit: 'pages', streak: 5, lastChecked: format(subDays(new Date(), 1), 'yyyy-MM-dd'), archived: false, order: 0 },
+  { id: '2', name: 'Morning Run', description: '30-minute run to start the day.', category: 'Fitness', type: 'positive', frequency: 'specific_days', days: [1, 3, 5], target: 1, unit: 'run', streak: 12, lastChecked: format(subDays(new Date(), 2), 'yyyy-MM-dd'), archived: false, order: 1 },
+  { id: '3', name: 'Drink 8 glasses of water', description: 'Stay hydrated throughout the day.', category: 'Health', type: 'positive', frequency: 'daily', target: 8, unit: 'glasses', streak: 2, lastChecked: format(subDays(new Date(), 1), 'yyyy-MM-dd'), archived: false, order: 2 },
+  { id: '4', name: 'No Junk Food', description: 'Avoid eating processed junk food.', category: 'Health', type: 'negative', frequency: 'daily', target: 1, unit: 'day', streak: 3, lastChecked: format(subDays(new Date(), 1), 'yyyy-MM-dd'), archived: false, order: 3 },
 ];
 const MOCK_QUESTS: Quest[] = [
   { id: 'q1', title: 'Complete 3 habits', target: 3, current: 1, completed: false, reward: { xp: 50, coins: 10 } },
@@ -106,15 +111,66 @@ const MOCK_QUESTS: Quest[] = [
   { id: 'q3', title: 'Log your mood', target: 1, current: 0, completed: false, reward: { xp: 20, coins: 5 } },
 ];
 const ALL_BADGES: Badge[] = [
-    { id: 'streak_5', name: '5-Day Streak', description: 'Kept a habit for 5 days straight!', icon: Flame },
-    { id: 'streak_10', name: '10-Day Streak', description: 'Two work weeks of consistency!', icon: Flame },
+    { id: 'streak_7', name: '7-Day Streak', description: 'Kept a habit for 7 days straight!', icon: Flame },
+    { id: 'streak_30', name: '30-Day Streak', description: 'A full month of consistency!', icon: Flame },
     { id: 'first_quest', name: 'Quest Complete', description: 'Completed your first daily quest.', icon: Zap },
     { id: 'perfect_week', name: 'Perfect Week', description: 'Completed all daily habits for 7 days.', icon: Award },
+    { id: 'early_bird', name: 'Early Bird', description: 'Completed a habit before 8 AM.', icon: Coffee },
+    { id: 'night_owl', name: 'Night Owl', description: 'Completed a habit after 9 PM.', icon: Moon },
 ];
 const MOCK_SHOP_ITEMS: ShopItem[] = [
     { id: 'streak_freeze', name: 'Streak Freeze', description: 'Protect a streak for one day of inactivity.', cost: 150 },
     { id: 'avatar_theme_1', name: 'Cosmic Theme', description: 'A new look for your profile.', cost: 300 },
 ];
+const checkAndAwardBadges = (state: HabitState) => {
+    const newBadges: string[] = [];
+    const award = (id: string) => {
+        if (!state.userBadges.includes(id)) {
+            newBadges.push(id);
+            state.userBadges.push(id);
+        }
+    };
+    // Streak badges
+    state.habits.forEach(h => {
+        if (h.streak >= 7) award('streak_7');
+        if (h.streak >= 30) award('streak_30');
+    });
+    // Quest badge
+    if (state.quests.some(q => q.completed) && !state.userBadges.includes('first_quest')) {
+        award('first_quest');
+    }
+    // Time-based badges
+    const hour = new Date().getHours();
+    if (hour < 8) award('early_bird');
+    if (hour > 21) award('night_owl');
+    if (newBadges.length > 0) {
+        confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+        const badgeNames = newBadges.map(id => state.badges.find(b => b.id)?.name).filter(Boolean);
+        toast.success(`Badge${badgeNames.length > 1 ? 's' : ''} Unlocked: ${badgeNames.join(', ')}!`);
+    }
+};
+const updateQuests = (state: HabitState, type: 'habit' | 'mood' | 'streak') => {
+    let questCompleted = false;
+    state.quests.forEach(q => {
+        if (q.completed) return;
+        if (type === 'habit' && q.id === 'q1') q.current++;
+        if (type === 'mood' && q.id === 'q3') q.current++;
+        if (type === 'streak' && q.id === 'q2') {
+            const maxStreak = Math.max(...state.habits.map(h => h.streak));
+            if (maxStreak >= 5) q.current = 1;
+        }
+        if (q.current >= q.target) {
+            q.completed = true;
+            state.userStats.xp += q.reward.xp;
+            state.userStats.coins += q.reward.coins;
+            toast.info(`Quest Complete: ${q.title}!`, {
+                description: `+${q.reward.xp} XP, +${q.reward.coins} Coins`,
+            });
+            questCompleted = true;
+        }
+    });
+    if (questCompleted) checkAndAwardBadges(state);
+};
 // Zustand Store with Persistence
 export const useHabitStore = create<HabitState>()(
   persist(
@@ -130,10 +186,12 @@ export const useHabitStore = create<HabitState>()(
       badges: ALL_BADGES,
       userBadges: [],
       shopItems: MOCK_SHOP_ITEMS,
+      lastVisitDate: format(new Date(), 'yyyy-MM-dd'),
       actions: {
         login: (email, pass) => {
           if (email === 'demo@habitforge.com' && pass === 'Password123!') {
             set({ auth: { loggedIn: true, user: { name: 'Demo User', email } } });
+            get().actions.dailyReset();
             return true;
           }
           return false;
@@ -141,42 +199,61 @@ export const useHabitStore = create<HabitState>()(
         logout: () => set({ auth: { loggedIn: false, user: null } }),
         checkHabit: (habitId, date) => set(produce((state: HabitState) => {
           const dateStr = format(date, 'yyyy-MM-dd');
-          const checkKey = `${habitId}-${dateStr}`;
           const habit = state.habits.find(h => h.id === habitId);
           if (!habit) return;
+          // Frequency Validation
+          if (habit.frequency === 'specific_days') {
+            const today = date.getDay();
+            if (!habit.days?.includes(today)) {
+              toast.error("Not scheduled for today!");
+              return;
+            }
+          }
+          const checkKey = `${habitId}-${dateStr}`;
           let check = state.checks[checkKey];
           if (!check) {
             check = { habitId, date: dateStr, value: 0 };
           }
-          if (check.value < habit.target) {
-            check.value += 1;
-            state.checks[checkKey] = check;
+          const isCompleted = check.value >= habit.target;
+          if (isCompleted) return;
+          check.value += 1;
+          state.checks[checkKey] = check;
+          const justCompleted = check.value >= habit.target;
+          if (habit.type === 'positive') {
             const xpGained = 10 + Math.min(habit.streak, 10);
             const coinsGained = 5;
             state.userStats.xp += xpGained;
             state.userStats.coins += coinsGained;
-            if (check.value >= habit.target) {
-              confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-              const lastCheckedDate = habit.lastChecked ? parseISO(habit.lastChecked) : null;
-              if (lastCheckedDate && isYesterday(lastCheckedDate)) {
-                habit.streak += 1;
-              } else if (!lastCheckedDate || !isToday(lastCheckedDate)) {
-                habit.streak = 1;
-              }
-              habit.lastChecked = dateStr;
-              if (habit.streak === 5 && !state.userBadges.includes('streak_5')) {
-                state.userBadges.push('streak_5');
+          }
+          if (justCompleted) {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            const lastCheckedDate = habit.lastChecked ? parseISO(habit.lastChecked) : null;
+            if (lastCheckedDate && isYesterday(startOfDay(lastCheckedDate))) {
+              habit.streak += 1;
+            } else if (!lastCheckedDate || !isToday(startOfDay(lastCheckedDate))) {
+              const daysBetween = lastCheckedDate ? Math.round((startOfDay(date).getTime() - startOfDay(lastCheckedDate).getTime()) / (1000 * 60 * 60 * 24)) : 99;
+              if (daysBetween > 1 && state.userStats.streakFreezes > 0) {
+                  state.userStats.streakFreezes--;
+                  toast.info(`Streak preserved! A streak freeze was used for ${habit.name}.`);
+              } else {
+                  habit.streak = 1;
               }
             }
+            habit.lastChecked = dateStr;
+            updateQuests(state, 'habit');
+            updateQuests(state, 'streak');
+            checkAndAwardBadges(state);
           }
         })),
         addHabit: (newHabit) => set(produce((state: HabitState) => {
+            const maxOrder = Math.max(0, ...state.habits.map(h => h.order));
             const habit: Habit = {
                 ...newHabit,
                 id: Date.now().toString(),
                 streak: 0,
                 lastChecked: null,
                 archived: false,
+                order: maxOrder + 1,
             };
             state.habits.push(habit);
         })),
@@ -195,7 +272,10 @@ export const useHabitStore = create<HabitState>()(
                 habit.archived = !habit.archived;
             }
         })),
-        reorderHabits: (newHabits) => set({ habits: newHabits }),
+        reorderHabits: (newHabits) => set(produce((state: HabitState) => {
+            const reorderedWithOrder = newHabits.map((h, index) => ({...h, order: index}));
+            state.habits = reorderedWithOrder;
+        })),
         logMood: (rating) => set(produce((state: HabitState) => {
             const dateStr = format(new Date(), 'yyyy-MM-dd');
             const existingLogIndex = state.moodLogs.findIndex(log => log.date === dateStr);
@@ -204,6 +284,7 @@ export const useHabitStore = create<HabitState>()(
             } else {
                 state.moodLogs.push({ date: dateStr, rating });
             }
+            updateQuests(state, 'mood');
         })),
         purchaseItem: (itemId) => {
             const { userStats, shopItems } = get();
@@ -219,13 +300,34 @@ export const useHabitStore = create<HabitState>()(
                 return true;
             }
             return false;
-        }
+        },
+        dailyReset: () => {
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            if (get().lastVisitDate !== todayStr) {
+                set(produce((state: HabitState) => {
+                    state.lastVisitDate = todayStr;
+                    state.quests.forEach(q => {
+                        q.current = 0;
+                        q.completed = false;
+                    });
+                    toast.info("Your daily quests have been refreshed!");
+                }));
+            }
+        },
+        updateUser: (name: string) => set(produce((state: HabitState) => {
+            if (state.auth.user) {
+                state.auth.user.name = name;
+            }
+        })),
       },
     }),
     {
       name: 'habit-forge-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ ...state, actions: {} }), // Don't persist actions
+      partialize: (state) => {
+        const { actions, ...rest } = state;
+        return rest;
+      },
     }
   )
 );
@@ -245,14 +347,20 @@ export const useHeatmapData = (): HeatmapData[] => {
   const checks = useChecks();
   const habits = useHabits();
   const checksByDate = Object.values(checks).reduce((acc, check) => {
-    acc[check.date] = (acc[check.date] || 0) + 1;
+    if (check.value > 0) { // Only count completed/progressed checks
+        const date = check.date;
+        if (!acc[date]) {
+            acc[date] = new Set();
+        }
+        acc[date].add(check.habitId);
+    }
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, Set<string>>);
   const data: HeatmapData[] = [];
   for (let i = 364; i >= 0; i--) {
     const date = subDays(new Date(), i);
     const dateStr = format(date, 'yyyy-MM-dd');
-    const count = checksByDate[dateStr] || 0;
+    const count = checksByDate[dateStr]?.size || 0;
     const totalHabits = habits.filter(h => !h.archived).length || 1;
     const completionRate = count / totalHabits;
     let level = 0;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, BarChart2, ShoppingCart, Settings, Gem, Menu, User, LogOut } from 'lucide-react';
+import { Home, BarChart2, ShoppingCart, Settings, Gem, Menu, User, LogOut, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -8,29 +8,36 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useHabitStore, useUserStats } from '@/lib/store';
 import { calculateLevelData } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Analytics', href: '/analytics', icon: BarChart2 },
   { name: 'Shop', href: '/shop', icon: ShoppingCart },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
-const NavItem = ({ item }: { item: typeof navItems[0] }) => (
-  <NavLink
-    to={item.href}
-    className={({ isActive }) =>
-      cn(
-        'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-        isActive && 'bg-muted text-primary'
-      )
-    }
+const NavItem = ({ item, index }: { item: typeof navItems[0], index: number }) => (
+  <motion.div
+    initial={{ x: -20, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    transition={{ delay: index * 0.1 }}
   >
-    <item.icon className="h-4 w-4" />
-    {item.name}
-  </NavLink>
+    <NavLink
+      to={item.href}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
+          isActive && 'bg-muted text-primary'
+        )
+      }
+    >
+      <item.icon className="h-4 w-4" />
+      {item.name}
+    </NavLink>
+  </motion.div>
 );
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { xp } = useUserStats();
+  const { xp, streakFreezes } = useUserStats();
   const { level } = calculateLevelData(xp);
   const logout = useHabitStore(s => s.actions.logout);
   const handleLogout = () => {
@@ -48,12 +55,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </NavLink>
           </div>
           <nav className="flex-1 grid items-start px-2 text-sm font-medium lg:px-4">
-            {navItems.map((item) => <NavItem key={item.name} item={item} />)}
+            {navItems.map((item, index) => <NavItem key={item.name} item={item} index={index} />)}
           </nav>
         </div>
       </div>
       <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 sticky top-0 z-30 bg-gradient-to-r from-background to-muted/30">
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -67,7 +74,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <Gem className="h-6 w-6 text-primary" />
                   <span>Habit Forge</span>
                 </NavLink>
-                {navItems.map((item) => <NavItem key={item.name} item={item} />)}
+                {navItems.map((item, index) => <NavItem key={item.name} item={item} index={index} />)}
               </nav>
             </SheetContent>
           </Sheet>
@@ -83,6 +90,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account (Level {level})</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem className="flex justify-between">
+                <span>Streak Freezes</span>
+                <span className="flex items-center gap-1"><Shield className="h-4 w-4 text-blue-500" /> {streakFreezes}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild><NavLink to="/settings">Settings</NavLink></DropdownMenuItem>
               <DropdownMenuItem asChild><NavLink to="/shop">Shop</NavLink></DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -94,7 +106,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </DropdownMenu>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
-          {children}
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>
