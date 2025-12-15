@@ -34,6 +34,23 @@ export function downloadJSON(data: object, filename: string) {
   link.download = filename;
   link.click();
 }
+export function downloadCSV(data: Record<string, any>[], filename: string) {
+  if (data.length === 0) return;
+  const headers = Object.keys(data[0]);
+  const csvRows = [
+    headers.join(','),
+    ...data.map(row =>
+      headers.map(fieldName => JSON.stringify(row[fieldName])).join(',')
+    )
+  ];
+  const csvString = csvRows.join('\r\n');
+  const blob = new Blob([csvString], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.click();
+}
 export function computeInsights(checks: Record<string, Check>, moodLogs: MoodLog[], habits: Habit[]): string[] {
   const insights: string[] = [];
   if (moodLogs.length < 3 || habits.length === 0) return ["Track more moods and habits to unlock insights!"];

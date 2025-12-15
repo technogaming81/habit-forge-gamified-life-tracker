@@ -5,14 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useHabitStore } from '@/lib/store';
-import { downloadJSON } from '@/lib/utils';
+import { downloadJSON, downloadCSV } from '@/lib/utils';
 import { User, LogOut, Download, Palette } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from 'sonner';
 export function Settings() {
   const navigate = useNavigate();
-  const state = useHabitStore();
+  const state = useHabitStore.getState();
   const user = state.auth?.user ?? { name: 'Demo User', email: 'demo@habitforge.com' };
   const { logout, updateUser } = state.actions;
   const [name, setName] = useState(user.name);
@@ -20,10 +20,17 @@ export function Settings() {
     logout();
     navigate('/auth');
   };
-  const handleExport = () => {
+  const handleExportJSON = () => {
     const { actions, ...exportData } = state;
     downloadJSON(exportData, 'habit-forge-data.json');
-    toast.success("Your data has been exported.");
+    toast.success("Your data has been exported as JSON.");
+  };
+  const handleExportCSV = () => {
+    const { habits, checks, moodLogs } = state;
+    downloadCSV(habits, 'habits.csv');
+    downloadCSV(Object.values(checks), 'checks.csv');
+    downloadCSV(moodLogs, 'moodLogs.csv');
+    toast.success("Your data has been exported as CSV files.");
   };
   const handleProfileUpdate = () => {
     updateUser(name);
@@ -66,10 +73,14 @@ export function Settings() {
               <CardTitle className="flex items-center gap-2"><Download /> Data Export</CardTitle>
               <CardDescription>Download all your habit data.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button onClick={handleExport} className="w-full">
+            <CardContent className="space-y-2">
+              <Button onClick={handleExportJSON} className="w-full">
                 <Download className="mr-2 h-4 w-4" />
                 Export as JSON
+              </Button>
+              <Button onClick={handleExportCSV} className="w-full" variant="secondary">
+                <Download className="mr-2 h-4 w-4" />
+                Export as CSV
               </Button>
             </CardContent>
           </Card>
