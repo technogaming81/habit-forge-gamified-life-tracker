@@ -6,8 +6,8 @@ import { InsightsCards } from '@/components/dashboard/InsightsCards';
 import { motion, AnimatePresence } from 'framer-motion';
 const tabContentVariants = {
   initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: 'easeIn' } },
 };
 export function Analytics() {
   return (
@@ -15,15 +15,15 @@ export function Analytics() {
       <div className="py-8 md:py-10 lg:py-12">
         <h1 className="text-4xl font-bold tracking-tight mb-8">Analytics Hub</h1>
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6 sticky top-[57px] lg:top-[61px] z-10 bg-background/95 backdrop-blur-sm">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="stats">Habit Stats</TabsTrigger>
             <TabsTrigger value="insights">Insights</TabsTrigger>
           </TabsList>
-          <AnimatePresence mode="wait">
-            <TabsContent value="overview" asChild>
+          <AnimatePresence initial={false}>
+            <TabsContent value="overview" asChild forceMount>
               <motion.div
-                key="overview"
+                key="tab-overview"
                 variants={tabContentVariants}
                 initial="initial"
                 animate="animate"
@@ -32,9 +32,9 @@ export function Analytics() {
                 <Heatmap />
               </motion.div>
             </TabsContent>
-            <TabsContent value="stats" asChild>
+            <TabsContent value="stats" asChild forceMount>
               <motion.div
-                key="stats"
+                key="tab-stats"
                 variants={tabContentVariants}
                 initial="initial"
                 animate="animate"
@@ -43,9 +43,9 @@ export function Analytics() {
                 <HabitStats />
               </motion.div>
             </TabsContent>
-            <TabsContent value="insights" asChild>
+            <TabsContent value="insights" asChild forceMount>
               <motion.div
-                key="insights"
+                key="tab-insights"
                 variants={tabContentVariants}
                 initial="initial"
                 animate="animate"
