@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { produce } from 'immer';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { format, subDays, isYesterday, isToday, parseISO, startOfDay, isSameDay } from 'date-fns';
-import { Award, Flame, Zap, Star, Coffee, Moon } from 'lucide-react';
+/* Icon imports removed – badge icons are derived from badge IDs at render time */
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { computeInsights } from './utils';
@@ -51,7 +51,6 @@ export interface Badge {
   id: string;
   name: string;
   description: string;
-  icon: React.ElementType;
 }
 export interface ShopItem {
   id: string;
@@ -111,12 +110,12 @@ const MOCK_QUESTS: Quest[] = [
   { id: 'q3', title: 'Log your mood', target: 1, current: 0, completed: false, reward: { xp: 20, coins: 5 } },
 ];
 const ALL_BADGES: Badge[] = [
-    { id: 'streak_7', name: '7-Day Streak', description: 'Kept a habit for 7 days straight!', icon: Flame },
-    { id: 'streak_30', name: '30-Day Streak', description: 'A full month of consistency!', icon: Flame },
-    { id: 'first_quest', name: 'Quest Complete', description: 'Completed your first daily quest.', icon: Zap },
-    { id: 'perfect_week', name: 'Perfect Week', description: 'Completed all daily habits for 7 days.', icon: Award },
-    { id: 'early_bird', name: 'Early Bird', description: 'Completed a habit before 8 AM.', icon: Coffee },
-    { id: 'night_owl', name: 'Night Owl', description: 'Completed a habit after 9 PM.', icon: Moon },
+    { id: 'streak_7', name: '7-Day Streak', description: 'Kept a habit for 7 days straight!' },
+    { id: 'streak_30', name: '30-Day Streak', description: 'A full month of consistency!' },
+    { id: 'first_quest', name: 'Quest Complete', description: 'Completed your first daily quest.' },
+    { id: 'perfect_week', name: 'Perfect Week', description: 'Completed all daily habits for 7 days.' },
+    { id: 'early_bird', name: 'Early Bird', description: 'Completed a habit before 8 AM.' },
+    { id: 'night_owl', name: 'Night Owl', description: 'Completed a habit after 9 PM.' },
 ];
 const MOCK_SHOP_ITEMS: ShopItem[] = [
     { id: 'streak_freeze', name: 'Streak Freeze', description: 'Protect a streak for one day of inactivity.', cost: 150 },
@@ -145,7 +144,7 @@ const checkAndAwardBadges = (state: HabitState) => {
     if (hour > 21) award('night_owl');
     if (newBadges.length > 0) {
         confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
-        const badgeNames = newBadges.map(id => state.badges.find(b => b.id)?.name).filter(Boolean);
+        const badgeNames = newBadges.map(id => state.badges.find(b => b.id === id)?.name).filter(Boolean);
         toast.success(`Badge${badgeNames.length > 1 ? 's' : ''} Unlocked: ${badgeNames.join(', ')}!`);
     }
 };

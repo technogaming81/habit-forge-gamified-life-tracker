@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trophy, Smile, Badge, Star } from 'lucide-react';
+import { Trophy, Smile, Badge, Star, Flame, Zap, Award, Coffee, Moon } from 'lucide-react';
 import { useQuests, useBadges, useUserBadges, useHabitActions } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -7,6 +7,25 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
+
+// Resolve the appropriate icon component for a given badge ID.
+const getBadgeIcon = (badgeId: string): React.ComponentType<{ className?: string }> => {
+  switch (badgeId) {
+    case 'streak_7':
+    case 'streak_30':
+      return Flame;
+    case 'first_quest':
+      return Zap;
+    case 'perfect_week':
+      return Award;
+    case 'early_bird':
+      return Coffee;
+    case 'night_owl':
+      return Moon;
+    default:
+      return Badge;
+  }
+};
 export function GamificationSidebar() {
   const quests = useQuests();
   const allBadges = useBadges();
@@ -81,30 +100,33 @@ export function GamificationSidebar() {
         </CardHeader>
         <CardContent>
           {recentUserBadges.length > 0 ? (
-            <div className="flex space-x-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               <AnimatePresence>
-                {recentUserBadges.map((badge, i) => (
-                  <motion.div
-                    key={badge.id}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.1 }}
-                  >
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <div className="bg-muted p-3 rounded-full">
-                            <badge.icon className="h-6 w-6 text-purple-500" />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="font-bold">{badge.name}</p>
-                          <p>{badge.description}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </motion.div>
-                ))}
+                {recentUserBadges.map((badge, i) => {
+                  const Icon = getBadgeIcon(badge.id);
+                  return (
+                    <motion.div
+                      key={badge.id}
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.1 }}
+                    >
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <div className="bg-muted p-3 rounded-full">
+                              <Icon className="h-6 w-6 text-purple-500" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="font-bold">{badge.name}</p>
+                            <p>{badge.description}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           ) : (
