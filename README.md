@@ -1,6 +1,6 @@
 # Habit Forge - Gamified Life Tracker
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/technogaming81/habit-forge-gamified-life-tracker)
 
 Habit Forge is a visually immersive, gamified habit tracking application that transforms daily routines into an RPG-like experience. It combines behavioral psychology with engaging game mechanics—XP, levels, coins, streaks, badges, and daily quests—to keep users motivated and consistent.
 
@@ -79,7 +79,7 @@ bun run deploy
 
 This bundles the Vite-built assets and deploys the Worker with SPA routing.
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/technogaming81/habit-forge-gamified-life-tracker)
 
 ## 🤝 Contributing
 
