@@ -10,14 +10,17 @@ import { useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
 export function Settings() {
   const navigate = useNavigate();
-  const { user, actions: { logout }, ...fullState } = useHabitStore(state => state);
+  const state = useHabitStore();
+  const user = state.auth?.user ?? { name: 'Demo User', email: 'demo@habitforge.com' };
+  const logoutFn = state.actions.logout;
   const handleLogout = () => {
-    logout();
+    logoutFn();
     navigate('/auth');
   };
   const handleExport = () => {
-    const { actions, ...exportableState } = fullState;
-    downloadJSON(exportableState, 'habit-forge-data.json');
+    const exportData = { ...state };
+    delete (exportData as any).actions; // Remove actions before exporting
+    downloadJSON(exportData, 'habit-forge-data.json');
   };
   return (
     <DashboardLayout>
@@ -33,11 +36,11 @@ export function Settings() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" defaultValue={user?.name || 'Demo User'} />
+                  <Input id="name" defaultValue={user.name} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue={user?.email || 'demo@habitforge.com'} readOnly />
+                  <Input id="email" type="email" defaultValue={user.email} readOnly />
                 </div>
                 <Button>Update Profile</Button>
               </CardContent>
