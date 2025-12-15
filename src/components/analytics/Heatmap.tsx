@@ -74,8 +74,7 @@ export function Heatmap() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
-                        className={`w-3.5 h-3.5 rounded-sm transition-transform duration-150 hover:scale-125`}
-                        style={{ backgroundColor: getColor(level).split('bg-')[1] }} // A bit hacky but works for this
+                        className={`w-3.5 h-3.5 rounded-sm transition-transform duration-150 hover:scale-125 ${getColor(level)}`}
                         role="gridcell"
                         aria-label={`${count} completions on ${format(parseISO(date), 'MMM d, yyyy')}`}
                       />
